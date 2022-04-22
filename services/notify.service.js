@@ -27,6 +27,21 @@ module.exports = {
       async handler () {
         this.notify.set('TempKey', 'test', 'ex', 2);
       }
+    },
+
+    demote: {
+      async handler (ctx) {
+        await this.notify.leader.stop();
+        await setTimeout(5000);
+        await ctx.call('notify.elect');
+      }
+    },
+
+    elect: {
+      async handler () {
+        console.log('ELECT');
+        await this.notify.leader.elect();
+      }
     }
   },
 
@@ -36,19 +51,19 @@ module.exports = {
         host: process.env.REDIS_HOST,
         port: process.env.REDIS_PORT,
         db: process.env.REDIS_DB,
-      },
-      mode: this.settings.mode,
-      callback: (channel, key) => {
-        console.info(`Expired key: ${key}`);
       }
     });
   },
 
   async started () {
-    await this.notify.ready();
+    if (this.settings.mode === 'worker') {
+      await this.notify.subscribe((channel, key) => {
+        console.log('Expired Key', key);
+      });
+    }
   },
 
   async stopped () {
-    await this.notify.stop();
+    await this.notify.unsubscribe();
   }
 };
